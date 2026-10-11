@@ -1,0 +1,140 @@
+{
+  "name": "OPC模板03 · 知识库 FAQ 自动回复（免凭证可跑）",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "kb-chat",
+        "options": {}
+      },
+      "id": "wh-11",
+      "name": "收到提问",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "opc-kb-chat"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 迷你知识库 + 关键词检索（示例；生产环境换成向量库 / 你的 FAQ 表）\nconst KB = [\n  { k: ['价格','多少钱','收费','报价','price','cost'], a: '基础版 ¥499 起、标准版 ¥999 起；回复\"报价\"获取详细价目表。' },\n  { k: ['预约','时间','上门','book','appointment'], a: '可以预约～请留下电话和方便的时间，我们 1 小时内确认。' },\n  { k: ['地址','在哪','怎么走','address'], a: '确认预约后发送详细地址与地图。' },\n  { k: ['退款','退钱','refund'], a: '7 天内不满意可退（详见服务条款），需要我帮您转人工处理吗？' },\n];\nconst out = [];\nfor (const item of $input.all()) {\n  const q = String(item.json.question || item.json.message || item.json.text || '').toLowerCase();\n  let best = null, hits = 0;\n  for (const e of KB) { const n = e.k.filter(w => q.includes(String(w).toLowerCase())).length; if (n > hits) { hits = n; best = e; } }\n  out.push({ json: { question: q, matched: !!best, answer: best ? best.a : '', confidence: hits } });\n}\nreturn out;"
+      },
+      "id": "cd-21",
+      "name": "检索知识库",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c2",
+              "leftValue": "={{ $json.matched }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": false,
+        "options": {}
+      },
+      "id": "if-11",
+      "name": "命中知识库?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(i => ({ json: { reply: i.json.answer, escalate: false } }));"
+      },
+      "id": "cd-22",
+      "name": "自动回答",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(i => ({ json: { reply: '这个问题我转人工帮您确认，稍后联系您（请留电话）。', escalate: true } }));"
+      },
+      "id": "cd-23",
+      "name": "转人工并留资",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        120
+      ]
+    }
+  ],
+  "connections": {
+    "收到提问": {
+      "main": [
+        [
+          {
+            "node": "检索知识库",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "检索知识库": {
+      "main": [
+        [
+          {
+            "node": "命中知识库?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "命中知识库?": {
+      "main": [
+        [
+          {
+            "node": "自动回答",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "转人工并留资",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

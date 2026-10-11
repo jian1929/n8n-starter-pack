@@ -1,0 +1,140 @@
+{
+  "name": "OPC模板01 · 线索即时响应（含AI评分占位）",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-instant-response",
+        "options": {}
+      },
+      "id": "wh-01",
+      "name": "收到新线索",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "opc-lead-ir"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 规范化 + 打分（示例规则；可替换为你的 AI 打分接口）\nconst out = [];\nfor (const item of $input.all()) {\n  const d = item.json || {};\n  const email = String(d.email || '').trim().toLowerCase();\n  const message = String(d.message || '');\n  let score = 40;\n  if (email) score += 15;\n  if (String(d.phone || '').trim()) score += 10;\n  if (/预算|报价|price|budget|尽快|asap|急|this week/i.test(message)) score += 20;\n  if (/了解|看看|随便|just looking|maybe/i.test(message)) score -= 15;\n  score = Math.max(0, Math.min(100, score));\n  out.push({ json: { email, phone: d.phone || '', message, name: d.name || '', score, priority: score >= 70 ? 'high' : 'low', receivedAt: new Date().toISOString() } });\n}\nreturn out;"
+      },
+      "id": "cd-01",
+      "name": "规范化与评分",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.score }}",
+              "rightValue": 70,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": false,
+        "options": {}
+      },
+      "id": "if-01",
+      "name": "高优先?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 高优先：生成即时跟进行动（在此接入你的 CRM / Slack / 短信）\nreturn $input.all().map(i => ({ json: { ...i.json, action: '立即人工跟进（5 分钟内）', channel: 'phone/wechat' } }));"
+      },
+      "id": "cd-02",
+      "name": "高优先动作",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 低优先：进入培育序列（在此接入你的邮件/回访系统）\nreturn $input.all().map(i => ({ json: { ...i.json, action: '进入培育序列（D2 回访 + D5 触达）', channel: 'email' } }));"
+      },
+      "id": "cd-03",
+      "name": "低优先动作",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        120
+      ]
+    }
+  ],
+  "connections": {
+    "收到新线索": {
+      "main": [
+        [
+          {
+            "node": "规范化与评分",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "规范化与评分": {
+      "main": [
+        [
+          {
+            "node": "高优先?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "高优先?": {
+      "main": [
+        [
+          {
+            "node": "高优先动作",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "低优先动作",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

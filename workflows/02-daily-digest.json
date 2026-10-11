@@ -1,0 +1,79 @@
+{
+  "name": "OPC模板02 · 每日数据简报（定时汇总推送）",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            }
+          ]
+        }
+      },
+      "id": "st-01",
+      "name": "每天运行",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 示例数据 — 换成你的数据源（数据库 / 表格 / API）\nreturn [{ json: { date: new Date().toISOString().slice(0, 10), newLeads: 12, hotLeads: 5, jobsDone: 3 } }];"
+      },
+      "id": "cd-11",
+      "name": "取数（示例）",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\nconst lines = [\n  '# 每日简报 · ' + d.date,\n  '',\n  '- 新增线索：' + d.newLeads,\n  '- 高优先线索：' + d.hotLeads,\n  '- 完成工单：' + d.jobsDone,\n];\nreturn [{ json: { ...d, digest: lines.join('\\n') } }];"
+      },
+      "id": "cd-12",
+      "name": "生成简报",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "每天运行": {
+      "main": [
+        [
+          {
+            "node": "取数（示例）",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "取数（示例）": {
+      "main": [
+        [
+          {
+            "node": "生成简报",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
