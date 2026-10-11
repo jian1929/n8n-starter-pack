@@ -1,5 +1,7 @@
 # n8n Starter Pack — 3 production-ready workflow templates
 
+[![validate-workflows](https://github.com/jian1929/n8n-starter-pack/actions/workflows/validate.yml/badge.svg)](https://github.com/jian1929/n8n-starter-pack/actions/workflows/validate.yml)
+
 > **Import. Click Execute. It runs with zero credentials.** Replace the clearly-marked steps with your own tools to go live.
 > 导入即用：三个模板都不依赖任何外部凭证即可运行；生产化替换点已在节点注释中标注。
 
